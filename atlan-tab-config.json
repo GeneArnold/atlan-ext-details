@@ -1,9 +1,9 @@
 {
   "external-details-tab": {
     "display_name": "External Details",
-    "iframe_url": "https://atlan-external-tab.onrender.com",
+    "iframe_url": "https://atlan-ext-details.onrender.com",
     "allowed_origins": [
-      "https://atlan-external-tab.onrender.com",
+      "https://atlan-ext-details.onrender.com",
       "https://*.onrender.com"
     ],
     "icon": "Analytics",

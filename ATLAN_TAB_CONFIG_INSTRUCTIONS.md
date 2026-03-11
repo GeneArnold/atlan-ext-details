@@ -7,8 +7,8 @@ The file `atlan-tab-config.json` contains the configuration that needs to be add
 ## 🎯 What to Send to Atlan Admin
 
 ### 1. Your Render URL
-Once deployed to Render, you'll get a URL like:
-- `https://atlan-external-tab.onrender.com` (replace with your actual URL)
+Your deployed Render URL:
+- `https://atlan-ext-details.onrender.com` ✅
 
 ### 2. The Configuration JSON
 
@@ -18,9 +18,9 @@ Once deployed to Render, you'll get a URL like:
 {
   "external-details-tab": {
     "display_name": "External Details",
-    "iframe_url": "https://YOUR-APP-NAME.onrender.com",
+    "iframe_url": "https://atlan-ext-details.onrender.com",
     "allowed_origins": [
-      "https://YOUR-APP-NAME.onrender.com",
+      "https://atlan-ext-details.onrender.com",
       "https://*.onrender.com"
     ],
     "icon": "Analytics",
@@ -76,10 +76,10 @@ Currently configured to show on:
 > Please add this external tab configuration to the LaunchDarkly feature flag `external-iframe-tabs` for tenant `fs3.atlan.com`:
 >
 > - App ID: `external-details-tab`
-> - Render URL: `https://YOUR-APP-NAME.onrender.com`
+> - Render URL: `https://atlan-ext-details.onrender.com`
 > - OAuth Redirect URIs to add:
->   - `https://YOUR-APP-NAME.onrender.com`
->   - `https://YOUR-APP-NAME.onrender.com/*`
+>   - `https://atlan-ext-details.onrender.com`
+>   - `https://atlan-ext-details.onrender.com/*`
 >
 > Configuration JSON attached.
 
