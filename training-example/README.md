@@ -65,21 +65,25 @@ pip install -r requirements.txt
 
 ### Step 2: Configure Your Atlan Instance
 
-Edit `index.html` and replace the Atlan URL (line ~157):
+The training example is pre-configured to use `https://partner-sandbox.atlan.com`.
+
+If you need to use a different Atlan instance, edit `index.html` (line ~200):
 
 ```javascript
 // Change this line:
-origin: 'https://your-tenant.atlan.com',
+const ATLAN_INSTANCE_URL = 'https://partner-sandbox.atlan.com';
 // To your actual Atlan instance:
-origin: 'https://mycompany.atlan.com',
+const ATLAN_INSTANCE_URL = 'https://your-company.atlan.com';
 ```
 
 ### Step 3: Set Environment Variable (Optional)
 
-For the backend, set your Atlan URL:
+For the backend, the Atlan URL is already configured. If you need to change it:
 
 ```bash
-export ATLAN_BASE_URL='https://mycompany.atlan.com'
+export ATLAN_BASE_URL='https://partner-sandbox.atlan.com'
+# Or for your own instance:
+# export ATLAN_BASE_URL='https://your-company.atlan.com'
 ```
 
 ### Step 4: Start the Backend

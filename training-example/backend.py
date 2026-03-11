@@ -74,7 +74,13 @@ def initialize_atlan_client(token):
     """
     # IMPORTANT: In a real deployment, you would get the base_url from
     # environment variables or configuration
-    base_url = os.getenv('ATLAN_BASE_URL', 'https://your-tenant.atlan.com')
+    base_url = os.getenv('ATLAN_BASE_URL', 'https://YOUR-TENANT-HERE.atlan.com')
+
+    # Check if the URL has been configured
+    if 'YOUR-TENANT-HERE' in base_url:
+        logger.error("[TRAINING] ⚠️  ATLAN_BASE_URL not configured!")
+        logger.error("[TRAINING] Set the environment variable: export ATLAN_BASE_URL='https://mycompany.atlan.com'")
+        raise ValueError("ATLAN_BASE_URL environment variable not properly configured")
 
     # Create client with the token from the frontend
     # The token comes from the Atlan Auth SDK in the frontend

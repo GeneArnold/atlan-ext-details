@@ -193,6 +193,12 @@
         // Get reference to the Atlan Auth SDK
         const { AtlanAuth } = window.AtlanAuthSDK;
 
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        // Your Atlan instance URL
+        const ATLAN_INSTANCE_URL = 'https://partner-sandbox.atlan.com';
+
         // Backend API endpoint - adjust this to match your Python server
         const BACKEND_URL = 'http://localhost:5000';
 
@@ -206,10 +212,11 @@
         function initializeAtlan() {
             console.log('[TRAINING] Starting Atlan Auth SDK initialization...');
 
+
             // Create new instance of AtlanAuth
             // You need to provide your Atlan instance URL
             const atlan = new AtlanAuth({
-                origin: 'https://your-tenant.atlan.com', // TODO: Replace with your Atlan instance
+                origin: ATLAN_INSTANCE_URL,
 
                 // This callback is called when authentication is successful
                 onReady: (context) => {
