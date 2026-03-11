@@ -223,6 +223,11 @@
          * Display content after authentication
          */
         async function displayAuthenticatedContent() {
+            // User object from OAuth handshake contains:
+            // - id: User's unique identifier (e.g., "8a6b3d2f-...")
+            // - username: User's login name (e.g., "john.doe")
+            // - email: User's email address (e.g., "john.doe@company.com")
+            // - name: User's display name (e.g., "John Doe")
             const user = authContext.user;
             const mode = authContext.mode;
             const assetGuid = authContext.page?.params?.id || null;
@@ -250,7 +255,11 @@
                 </div>
 
                 <div class="info-section">
-                    <h2><span class="icon">👤</span> User Information</h2>
+                    <h2><span class="icon">👤</span> User Information (OAuth Handshake Data)</h2>
+                    <div class="data-field">
+                        <span class="label">User ID:</span>
+                        <span class="value mono">${user.id || 'N/A'}</span>
+                    </div>
                     <div class="data-field">
                         <span class="label">Username:</span>
                         <span class="value">${user.username || 'N/A'}</span>
@@ -260,7 +269,7 @@
                         <span class="value">${user.email || 'N/A'}</span>
                     </div>
                     <div class="data-field">
-                        <span class="label">Full Name:</span>
+                        <span class="label">Display Name:</span>
                         <span class="value">${user.name || 'N/A'}</span>
                     </div>
                 </div>
