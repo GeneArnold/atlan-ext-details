@@ -3,11 +3,11 @@ services:
     name: atlan-external-tab
     runtime: python
     plan: free  # or 'starter' for production
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: ATLAN_BASE_URL
         value: https://fs3.atlan.com
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.10
     autoDeploy: false  # Set to true if you want automatic deploys from GitHub
