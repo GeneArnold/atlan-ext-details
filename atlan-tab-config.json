@@ -1,0 +1,31 @@
+{
+  "external-details-tab": {
+    "display_name": "External Details",
+    "iframe_url": "https://atlan-external-tab.onrender.com",
+    "allowed_origins": [
+      "https://atlan-external-tab.onrender.com",
+      "https://*.onrender.com"
+    ],
+    "icon": "Analytics",
+    "description": "Displays asset details with user authentication info",
+    "render_at": [
+      {
+        "slot": "asset-profile-tab",
+        "when": {
+          "assetTypes": [
+            "Table",
+            "View",
+            "MaterialisedView",
+            "Column",
+            "Database",
+            "Schema",
+            "AtlasGlossary",
+            "AtlasGlossaryTerm",
+            "AtlasGlossaryCategory",
+            "Connection"
+          ]
+        }
+      }
+    ]
+  }
+}
