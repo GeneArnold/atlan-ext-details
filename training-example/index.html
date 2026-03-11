@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlan External Tab Training Example</title>
+
+    <!-- Simple, clean styling - no frameworks -->
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        /* Main container */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .header h1 {
+            color: #3366FF; /* Atlan blue */
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        /* Info sections */
+        .info-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3366FF;
+        }
+
+        .info-section h2 {
+            color: #495057;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .info-section h2 .icon {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+
+        /* Data fields */
+        .data-field {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .data-field .label {
+            font-weight: 600;
+            color: #6c757d;
+            min-width: 150px;
+            font-size: 14px;
+        }
+
+        .data-field .value {
+            color: #2c3e50;
+            font-size: 14px;
+            word-break: break-word;
+            flex: 1;
+        }
+
+        .data-field .value.mono {
+            font-family: 'Courier New', Courier, monospace;
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .loading .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3366FF;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error state */
+        .error {
+            background: #fef2f2;
+            border-left-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .error h2 {
+            color: #dc3545;
+        }
+
+        /* Success state */
+        .success {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        /* Status indicator */
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e7f5ff;
+            color: #3366FF;
+        }
+
+        .status.authenticated {
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>External Details Tab</h1>
+            <p>Training Example - Atlan Integration</p>
+        </div>
+
+        <!-- Main content will be inserted here by JavaScript -->
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Initializing Atlan connection...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Atlan Auth SDK from CDN -->
+    <!-- This SDK handles all the authentication complexity for us -->
+    <script src="https://unpkg.com/@atlanhq/atlan-auth@latest/dist/atlan-auth.umd.min.js"></script>
+
+    <!-- Our training example code -->
+    <script>
+        // ============================================
+        // TRAINING EXAMPLE: ATLAN EXTERNAL TAB INTEGRATION
+        // ============================================
+        // This example demonstrates how to:
+        // 1. Authenticate using Atlan Auth SDK
+        // 2. Receive asset GUID from Atlan (via postMessage)
+        // 3. Display user information from OAuth
+        // 4. Fetch asset details from backend using pyatlan
+
+        // Get reference to the Atlan Auth SDK
+        const { AtlanAuth } = window.AtlanAuthSDK;
+
+        // Backend API endpoint - adjust this to match your Python server
+        const BACKEND_URL = 'http://localhost:5000';
+
+        // Store our authentication context
+        let authContext = null;
+
+        /**
+         * Initialize the Atlan Auth SDK
+         * This is the main entry point for our integration
+         */
+        function initializeAtlan() {
+            console.log('[TRAINING] Starting Atlan Auth SDK initialization...');
+
+            // Create new instance of AtlanAuth
+            // You need to provide your Atlan instance URL
+            const atlan = new AtlanAuth({
+                origin: 'https://your-tenant.atlan.com', // TODO: Replace with your Atlan instance
+
+                // This callback is called when authentication is successful
+                onReady: (context) => {
+                    console.log('[TRAINING] ✅ Authentication successful!', context);
+                    authContext = context;
+                    displayAuthenticatedContent();
+                },
+
+                // This callback is called if authentication fails
+                onError: (error) => {
+                    console.error('[TRAINING] ❌ Authentication failed:', error);
+                    displayError(error.message);
+                },
+
+                // Enable debug mode for training (shows detailed logs)
+                debug: true
+            });
+
+            // Start the authentication process
+            // This handles both embedded (iframe) and standalone (localhost) modes automatically
+            atlan.init();
+        }
+
+        /**
+         * Display the main content after successful authentication
+         */
+        async function displayAuthenticatedContent() {
+            console.log('[TRAINING] Displaying authenticated content...');
+
+            // Extract data from auth context
+            const user = authContext.user;
+            const mode = authContext.mode; // 'embedded' or 'standalone'
+            const assetGuid = authContext.page?.params?.id || 'Not available (standalone mode)';
+            const token = authContext.token;
+
+            // Build the HTML content
+            let contentHTML = `
+                <!-- Authentication Status -->
+                <div class="info-section">
+                    <h2><span class="icon">🔐</span> Authentication Status</h2>
+                    <div class="data-field">
+                        <span class="label">Status:</span>
+                        <span class="value"><span class="status authenticated">Authenticated</span></span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Mode:</span>
+                        <span class="value">${mode}</span>
+                    </div>
+                </div>
+
+                <!-- User Information (from OAuth) -->
+                <div class="info-section">
+                    <h2><span class="icon">👤</span> User Information</h2>
+                    <div class="data-field">
+                        <span class="label">Username:</span>
+                        <span class="value">${user.username || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Email:</span>
+                        <span class="value">${user.email || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Full Name:</span>
+                        <span class="value">${user.name || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">User ID:</span>
+                        <span class="value mono">${user.id || 'N/A'}</span>
+                    </div>
+                </div>
+
+                <!-- Asset Information (from postMessage) -->
+                <div class="info-section">
+                    <h2><span class="icon">📄</span> Asset Information</h2>
+                    <div class="data-field">
+                        <span class="label">Asset GUID:</span>
+                        <span class="value mono">${assetGuid}</span>
+                    </div>
+                    <div id="asset-details">
+                        <div class="data-field">
+                            <span class="label">Description:</span>
+                            <span class="value">Loading from backend...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Update the page content
+            document.getElementById('content').innerHTML = contentHTML;
+
+            // If we have an asset GUID (embedded mode), fetch its details
+            if (assetGuid !== 'Not available (standalone mode)') {
+                await fetchAssetDetails(assetGuid, token);
+            } else {
+                // In standalone mode, show a message
+                document.getElementById('asset-details').innerHTML = `
+                    <div class="data-field">
+                        <span class="label">Description:</span>
+                        <span class="value"><em>Run this tab inside Atlan to see asset details</em></span>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Fetch asset details from our Python backend
+         * The backend uses pyatlan SDK to get the asset information
+         */
+        async function fetchAssetDetails(guid, token) {
+            console.log('[TRAINING] Fetching asset details for GUID:', guid);
+
+            try {
+                // Call our Python backend
+                // We send the token so the backend can authenticate with Atlan
+                const response = await fetch(`${BACKEND_URL}/api/asset/${guid}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Backend returned ${response.status}`);
+                }
+
+                const assetData = await response.json();
+                console.log('[TRAINING] Received asset data:', assetData);
+
+                // Display the asset details
+                document.getElementById('asset-details').innerHTML = `
+                    <div class="data-field">
+                        <span class="label">Name:</span>
+                        <span class="value">${assetData.name || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Type:</span>
+                        <span class="value">${assetData.type_name || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Description:</span>
+                        <span class="value">${assetData.description || 'No description available'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Qualified Name:</span>
+                        <span class="value mono">${assetData.qualified_name || 'N/A'}</span>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('[TRAINING] Failed to fetch asset details:', error);
+                document.getElementById('asset-details').innerHTML = `
+                    <div class="data-field">
+                        <span class="label">Description:</span>
+                        <span class="value" style="color: #dc3545;">
+                            Error loading asset details: ${error.message}
+                        </span>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Display an error message
+         */
+        function displayError(message) {
+            document.getElementById('content').innerHTML = `
+                <div class="info-section error">
+                    <h2><span class="icon">❌</span> Error</h2>
+                    <p>${message}</p>
+                    <p style="margin-top: 10px; font-size: 12px;">
+                        Check the browser console for more details.
+                    </p>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // START THE APPLICATION
+        // ============================================
+        // When the page loads, initialize the Atlan connection
+        console.log('[TRAINING] Page loaded, starting initialization...');
+        initializeAtlan();
+    </script>
+</body>
+</html>

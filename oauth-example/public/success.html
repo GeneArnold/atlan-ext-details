@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Success - Atlan OAuth</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .success-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #4caf50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .success-badge:before {
+            content: "✓";
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .token-display {
+            background: #f5f7fa;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .token-section {
+            margin-bottom: 20px;
+        }
+
+        .token-section h3 {
+            color: #667eea;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .button {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .button-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .button-secondary {
+            background: #f5f7fa;
+            color: #333;
+            border: 1px solid #e1e8ed;
+        }
+
+        .button-secondary:hover {
+            background: #e8ebef;
+        }
+
+        .button-danger {
+            background: #ff5252;
+            color: white;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #667eea;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .test-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .test-result.success {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+        }
+
+        .test-result.error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+
+        .json-display {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        .copy-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .copy-button:hover {
+            background: #5a6fd8;
+        }
+
+        .copy-button.copied {
+            background: #4caf50;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="success-badge">Authenticated</div>
+            <h1>OAuth Authentication Successful!</h1>
+            <p class="subtitle">You've successfully authenticated with Atlan. Your tokens are ready to use.</p>
+        </div>
+
+        <div class="card">
+            <h2>
+                Token Information
+                <button class="copy-button" onclick="copyAllTokens()">Copy All</button>
+            </h2>
+            <div id="tokenInfo">
+                <div class="loading"></div> Loading token information...
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Test Atlan API</h2>
+            <p style="color: #666; margin-bottom: 20px;">Test your access token by making a request to Atlan's API:</p>
+
+            <button class="button button-primary" onclick="testAtlanAPI()">
+                Test API Call
+            </button>
+
+            <div id="testResult" class="test-result"></div>
+        </div>
+
+        <div class="card">
+            <h2>Next Steps</h2>
+            <div class="button-group">
+                <a href="/" class="button button-secondary">Back to Home</a>
+                <a href="/auth/logout" class="button button-danger">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tokenData = null;
+
+        // Load token information
+        async function loadTokens() {
+            try {
+                const response = await fetch('/api/tokens');
+                const data = await response.json();
+                tokenData = data;
+                displayTokens(data);
+            } catch (error) {
+                document.getElementById('tokenInfo').innerHTML = `
+                    <div class="test-result error" style="display:block;">
+                        Error loading tokens: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function displayTokens(data) {
+            const tokenInfo = document.getElementById('tokenInfo');
+
+            let html = '';
+
+            // Access Token
+            if (data.tokens.access_token) {
+                html += `
+                    <div class="token-section">
+                        <h3>Access Token</h3>
+                        <div class="token-display" id="accessToken">${data.tokens.access_token}</div>
+                    </div>
+                `;
+            }
+
+            // ID Token
+            if (data.tokens.id_token) {
+                html += `
+                    <div class="token-section">
+                        <h3>ID Token</h3>
+                        <div class="token-display" id="idToken">${data.tokens.id_token}</div>
+                    </div>
+                `;
+
+                // Decode and display ID token claims
+                try {
+                    const payload = data.tokens.id_token.split('.')[1];
+                    const claims = JSON.parse(atob(payload));
+
+                    html += `
+                        <div class="token-section">
+                            <h3>ID Token Claims</h3>
+                            <div class="info-grid">
+                    `;
+
+                    const displayClaims = ['sub', 'email', 'name', 'preferred_username', 'iss', 'aud'];
+                    displayClaims.forEach(claim => {
+                        if (claims[claim]) {
+                            html += `
+                                <div class="info-item">
+                                    <div class="info-label">${claim}</div>
+                                    <div class="info-value">${claims[claim]}</div>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    // Token expiry
+                    if (claims.exp) {
+                        const expiryDate = new Date(claims.exp * 1000);
+                        html += `
+                            <div class="info-item">
+                                <div class="info-label">Expires</div>
+                                <div class="info-value">${expiryDate.toLocaleString()}</div>
+                            </div>
+                        `;
+                    }
+
+                    html += '</div></div>';
+                } catch (e) {
+                    console.error('Error decoding ID token:', e);
+                }
+            }
+
+            // Refresh Token
+            if (data.tokens.refresh_token) {
+                html += `
+                    <div class="token-section">
+                        <h3>Refresh Token</h3>
+                        <div class="token-display" id="refreshToken">${data.tokens.refresh_token}</div>
+                    </div>
+                `;
+            }
+
+            // Token metadata
+            html += `
+                <div class="token-section">
+                    <h3>Token Metadata</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Token Type</div>
+                            <div class="info-value">${data.tokens.token_type || 'Bearer'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Expires In</div>
+                            <div class="info-value">${data.tokens.expires_in ? data.tokens.expires_in + ' seconds' : 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Scope</div>
+                            <div class="info-value">${data.tokens.scope || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            tokenInfo.innerHTML = html;
+        }
+
+        async function testAtlanAPI() {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.innerHTML = 'Testing API... <span class="loading"></span>';
+            resultDiv.className = 'test-result';
+            resultDiv.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/test-atlan');
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.className = 'test-result success';
+                    resultDiv.innerHTML = `
+                        <strong>✓ API call successful!</strong>
+                        <p>Successfully retrieved user information from Atlan.</p>
+                        <div class="json-display">
+                            <pre>${JSON.stringify(data.user, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(data.error || 'API call failed');
+                }
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `
+                    <strong>✗ API call failed</strong>
+                    <p>${error.message}</p>
+                    <div class="json-display">
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        function copyAllTokens() {
+            if (!tokenData) return;
+
+            const tokenText = JSON.stringify(tokenData.tokens, null, 2);
+            navigator.clipboard.writeText(tokenText).then(() => {
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Load tokens on page load
+        loadTokens();
+    </script>
+</body>
+</html>

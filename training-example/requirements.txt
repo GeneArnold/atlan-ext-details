@@ -1,0 +1,14 @@
+# Python dependencies for Atlan External Tab Training Example
+
+# Web framework
+flask==2.3.3
+
+# Enable CORS for frontend-backend communication
+flask-cors==4.0.0
+
+# Official Atlan Python SDK
+# This is the key dependency for interacting with Atlan
+pyatlan==2.0.0
+
+# Optional but recommended for better logging
+python-dotenv==1.0.0

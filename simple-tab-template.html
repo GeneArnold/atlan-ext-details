@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Atlan Tab Integration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .status.connected {
+            color: #10b981;
+        }
+
+        .status.error {
+            color: #ef4444;
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c00;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .asset-info {
+            background: #f7f9fc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .asset-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .asset-info p {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        /* Hide debug info in production */
+        body:not(.debug-mode) .debug-info {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Simple Tab Example</h1>
+        <div id="status" class="status">Waiting for Atlan connection...</div>
+    </div>
+
+    <div class="content">
+        <div class="card">
+            <div id="mainContent" class="loading">
+                <div class="loading-spinner"></div>
+                <div>Connecting to Atlan...</div>
+                <div style="margin-top: 10px; font-size: 12px;">
+                    Select an asset in Atlan to see its details here
+                </div>
+            </div>
+
+            <div id="debugInfo" class="debug-info"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // SIMPLE TAB IMPLEMENTATION
+        // ============================================
+
+        // State management
+        let isReady = false;
+        let currentAsset = null;
+
+        // Debug mode - enable with ?debug=true
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('debug') === 'true') {
+            document.body.classList.add('debug-mode');
+        }
+
+        function log(message, data = null) {
+            const timestamp = new Date().toISOString();
+            console.log(`[${timestamp}] ${message}`, data || '');
+
+            // Update debug panel if in debug mode
+            const debugDiv = document.getElementById('debugInfo');
+            if (debugDiv && document.body.classList.contains('debug-mode')) {
+                debugDiv.innerHTML += `<div>[${timestamp}] ${message} ${data ? JSON.stringify(data) : ''}</div>`;
+                // Keep only last 10 messages
+                const messages = debugDiv.querySelectorAll('div');
+                if (messages.length > 10) {
+                    messages[0].remove();
+                }
+            }
+        }
+
+        // ============================================
+        // CRITICAL: Set up message listener IMMEDIATELY
+        // ============================================
+        log('Setting up message listener');
+
+        window.addEventListener('message', async (event) => {
+            log('Message received', { type: event.data?.type, origin: event.origin });
+
+            // Validate message
+            if (!event.data || typeof event.data !== 'object') {
+                return;
+            }
+
+            // Security: Check origin
+            const allowedOrigins = [
+                'https://home.atlan.com',
+                'https://partner-sandbox.atlan.com',
+                'http://localhost:3001'
+            ];
+
+            if (!allowedOrigins.includes(event.origin) && event.origin !== window.location.origin) {
+                log('Ignoring message from unauthorized origin', event.origin);
+                return;
+            }
+
+            const { type, payload } = event.data;
+
+            // Handle different message types
+            switch (type) {
+                case 'ATLAN_HANDSHAKE':
+                    handleHandshake(event.origin);
+                    break;
+
+                case 'ATLAN_AUTH_CONTEXT':
+                    handleAuthContext(payload, event.origin);
+                    break;
+
+                case 'ATLAN_LOGOUT':
+                    handleLogout();
+                    break;
+
+                default:
+                    log('Unknown message type', type);
+            }
+        });
+
+        // ============================================
+        // Message Handlers
+        // ============================================
+
+        function handleHandshake(origin) {
+            log('Handshake received, sending IFRAME_READY');
+
+            // Respond immediately
+            window.parent.postMessage({
+                type: 'IFRAME_READY',
+                payload: { ready: true }
+            }, origin);
+
+            updateStatus('Handshake completed', 'connected');
+        }
+
+        function handleAuthContext(payload, origin) {
+            log('Auth context received', payload);
+
+            if (payload?.page?.params?.id) {
+                const assetId = payload.page.params.id;
+                loadAsset(assetId);
+            } else {
+                showError('No asset ID received from Atlan');
+            }
+
+            updateStatus('Connected to Atlan', 'connected');
+        }
+
+        function handleLogout() {
+            log('Logout received');
+            currentAsset = null;
+            updateStatus('Session ended', 'error');
+            showError('Your session has ended. Please refresh to continue.');
+        }
+
+        // ============================================
+        // Business Logic
+        // ============================================
+
+        async function loadAsset(assetId) {
+            log('Loading asset', assetId);
+            currentAsset = assetId;
+
+            const contentDiv = document.getElementById('mainContent');
+
+            // Show loading state
+            contentDiv.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading asset details...</div>
+                </div>
+            `;
+
+            try {
+                // Simulate API call - replace with your actual backend call
+                // const response = await fetch(`/api/asset/${assetId}`);
+                // const data = await response.json();
+
+                // For demo purposes, show mock data
+                setTimeout(() => {
+                    displayAsset({
+                        id: assetId,
+                        name: 'Sample Asset',
+                        type: 'Table',
+                        description: 'This is a sample asset loaded in your custom tab.',
+                        qualifiedName: 'default/database/schema/table',
+                        createdAt: new Date().toISOString()
+                    });
+                }, 1000);
+
+            } catch (error) {
+                log('Error loading asset', error.message);
+                showError(`Failed to load asset: ${error.message}`);
+            }
+        }
+
+        function displayAsset(asset) {
+            log('Displaying asset', asset.id);
+
+            const contentDiv = document.getElementById('mainContent');
+            contentDiv.innerHTML = `
+                <h2>Asset Details</h2>
+                <div class="asset-info">
+                    <h3>${asset.name}</h3>
+                    <p><strong>Type:</strong> ${asset.type}</p>
+                    <p><strong>ID:</strong> ${asset.id}</p>
+                    <p><strong>Qualified Name:</strong> ${asset.qualifiedName}</p>
+                    <p><strong>Description:</strong> ${asset.description}</p>
+                    <p><strong>Created:</strong> ${new Date(asset.createdAt).toLocaleString()}</p>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h3>Your Custom Content Here</h3>
+                    <p>This is where you can add your custom functionality for this asset.</p>
+                    <!-- Add your custom UI elements here -->
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const contentDiv = document.getElementById('mainContent');
+            contentDiv.innerHTML = `
+                <div class="error-message">
+                    <h3>⚠️ Error</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+            updateStatus('Error', 'error');
+        }
+
+        function updateStatus(message, className = '') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${className}`;
+        }
+
+        // ============================================
+        // Proactive initialization
+        // ============================================
+
+        // Send ready signal after a short delay as fallback
+        setTimeout(() => {
+            if (!isReady) {
+                log('Proactively sending IFRAME_READY');
+                const parentOrigin = document.referrer
+                    ? new URL(document.referrer).origin
+                    : 'https://partner-sandbox.atlan.com';
+
+                window.parent.postMessage({
+                    type: 'IFRAME_READY',
+                    payload: { ready: true }
+                }, parentOrigin);
+            }
+        }, 500);
+
+        // ============================================
+        // Test mode for local development
+        // ============================================
+
+        if (urlParams.get('test') === 'true') {
+            log('Running in test mode');
+
+            // Simulate Atlan messages
+            setTimeout(() => {
+                window.postMessage({
+                    type: 'ATLAN_HANDSHAKE',
+                    payload: { appId: 'test-app' }
+                }, '*');
+            }, 100);
+
+            setTimeout(() => {
+                window.postMessage({
+                    type: 'ATLAN_AUTH_CONTEXT',
+                    payload: {
+                        token: 'test-token',
+                        user: {
+                            id: 'user-123',
+                            name: 'Test User'
+                        },
+                        page: {
+                            params: {
+                                id: 'test-asset-guid-' + Math.random().toString(36).substr(2, 9)
+                            }
+                        }
+                    }
+                }, '*');
+            }, 500);
+        }
+
+        // Log initialization complete
+        log('Initialization complete');
+    </script>
+</body>
+</html>
