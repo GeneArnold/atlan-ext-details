@@ -1,0 +1,14 @@
+# Production requirements for Atlan External Tab
+
+# Web framework
+flask==2.3.3
+flask-cors==4.0.0
+
+# Atlan SDK for fetching asset data
+pyatlan==2.0.0
+
+# Web server for production
+gunicorn==21.2.0
+
+# Environment variables (optional but recommended)
+python-dotenv==1.0.0

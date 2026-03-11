@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlan External Details Tab</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .header h1 {
+            color: #3366FF;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .info-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3366FF;
+        }
+
+        .info-section h2 {
+            color: #495057;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .info-section h2 .icon {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+
+        .data-field {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .data-field .label {
+            font-weight: 600;
+            color: #6c757d;
+            min-width: 150px;
+            font-size: 14px;
+        }
+
+        .data-field .value {
+            color: #2c3e50;
+            font-size: 14px;
+            word-break: break-word;
+            flex: 1;
+        }
+
+        .data-field .value.mono {
+            font-family: 'Courier New', Courier, monospace;
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .loading .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3366FF;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fef2f2;
+            border-left-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .error h2 {
+            color: #dc3545;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e7f5ff;
+            color: #3366FF;
+        }
+
+        .status.authenticated {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .env-info {
+            margin-top: 30px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            font-size: 12px;
+        }
+
+        .env-info h3 {
+            color: #856404;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>External Details Tab</h1>
+            <p>Atlan Asset Information Display</p>
+        </div>
+
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Initializing Atlan connection...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Atlan Auth SDK -->
+    <script src="https://unpkg.com/@atlanhq/atlan-auth@latest/dist/atlan-auth.umd.min.js"></script>
+
+    <script>
+        // Get Atlan Auth SDK
+        const { AtlanAuth } = window.AtlanAuthSDK;
+
+        // Configuration - Atlan instance where this tab will be installed
+        const ATLAN_INSTANCE_URL = 'https://fs3.atlan.com';
+
+        // Use relative path for API (same domain in production)
+        const BACKEND_URL = '';  // Empty means same domain
+
+        // Store auth context
+        let authContext = null;
+        let atlanClient = null;
+
+        /**
+         * Initialize Atlan Auth SDK
+         */
+        function initializeAtlan() {
+            console.log('[ATLAN] Initializing Auth SDK...');
+            console.log('[ATLAN] Instance URL:', ATLAN_INSTANCE_URL);
+            console.log('[ATLAN] Current URL:', window.location.href);
+
+            const atlan = new AtlanAuth({
+                origin: ATLAN_INSTANCE_URL,
+
+                onReady: (context) => {
+                    console.log('[ATLAN] ✅ Authentication successful!', context);
+                    authContext = context;
+                    atlanClient = atlan;
+                    displayAuthenticatedContent();
+                },
+
+                onError: (error) => {
+                    console.error('[ATLAN] ❌ Authentication failed:', error);
+                    displayError(error.message || 'Authentication failed');
+                },
+
+                debug: true
+            });
+
+            atlan.init();
+        }
+
+        /**
+         * Display content after authentication
+         */
+        async function displayAuthenticatedContent() {
+            const user = authContext.user;
+            const mode = authContext.mode;
+            const assetGuid = authContext.page?.params?.id || null;
+            const token = authContext.token || atlanClient.getToken();
+
+            console.log('[ATLAN] Mode:', mode);
+            console.log('[ATLAN] Asset GUID:', assetGuid);
+            console.log('[ATLAN] User:', user);
+
+            let contentHTML = `
+                <div class="info-section">
+                    <h2><span class="icon">🔐</span> Authentication Status</h2>
+                    <div class="data-field">
+                        <span class="label">Status:</span>
+                        <span class="value"><span class="status authenticated">Authenticated</span></span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Mode:</span>
+                        <span class="value">${mode}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Environment:</span>
+                        <span class="value">${window.location.hostname}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h2><span class="icon">👤</span> User Information</h2>
+                    <div class="data-field">
+                        <span class="label">Username:</span>
+                        <span class="value">${user.username || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Email:</span>
+                        <span class="value">${user.email || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Full Name:</span>
+                        <span class="value">${user.name || 'N/A'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h2><span class="icon">📄</span> Asset Information</h2>
+                    <div class="data-field">
+                        <span class="label">Asset GUID:</span>
+                        <span class="value mono">${assetGuid || 'Not available (not in asset context)'}</span>
+                    </div>
+                    <div id="asset-details">
+                        ${assetGuid ? '<div class="data-field"><span class="label">Loading details...</span></div>' : ''}
+                    </div>
+                </div>
+            `;
+
+            // Add environment info for debugging
+            if (mode === 'standalone' || window.location.hostname.includes('localhost')) {
+                contentHTML += `
+                    <div class="env-info">
+                        <h3>📍 Deployment Info</h3>
+                        <div>URL: ${window.location.href}</div>
+                        <div>Mode: ${mode}</div>
+                        <div>To use as Atlan tab, add this URL in Atlan's external tab configuration</div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('content').innerHTML = contentHTML;
+
+            // Fetch asset details if we have a GUID
+            if (assetGuid && mode === 'embedded') {
+                await fetchAssetDetails(assetGuid, token);
+            }
+        }
+
+        /**
+         * Fetch asset details from backend
+         */
+        async function fetchAssetDetails(guid, token) {
+            console.log('[ATLAN] Fetching asset details for:', guid);
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/asset/${guid}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Backend returned ${response.status}`);
+                }
+
+                const assetData = await response.json();
+                console.log('[ATLAN] Asset data received:', assetData);
+
+                document.getElementById('asset-details').innerHTML = `
+                    <div class="data-field">
+                        <span class="label">Name:</span>
+                        <span class="value">${assetData.name || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Type:</span>
+                        <span class="value">${assetData.type_name || 'N/A'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Description:</span>
+                        <span class="value">${assetData.description || 'No description available'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Qualified Name:</span>
+                        <span class="value mono" style="font-size: 10px;">${assetData.qualified_name || 'N/A'}</span>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('[ATLAN] Failed to fetch asset details:', error);
+                document.getElementById('asset-details').innerHTML = `
+                    <div class="data-field">
+                        <span class="label">Error:</span>
+                        <span class="value" style="color: #dc3545;">
+                            Failed to load asset details: ${error.message}
+                        </span>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Display error message
+         */
+        function displayError(message) {
+            document.getElementById('content').innerHTML = `
+                <div class="info-section error">
+                    <h2><span class="icon">❌</span> Error</h2>
+                    <p>${message}</p>
+                    <p style="margin-top: 15px; font-size: 12px;">
+                        If this is a redirect_uri error, the app needs to be registered in Atlan.
+                    </p>
+                    <p style="margin-top: 10px; font-size: 12px;">
+                        Current URL: ${window.location.href}
+                    </p>
+                </div>
+            `;
+        }
+
+        // Start the application
+        console.log('[ATLAN] Starting application...');
+        initializeAtlan();
+    </script>
+</body>
+</html>
