@@ -39,10 +39,27 @@ training-example/
 2. **Atlan instance** URL (e.g., `https://your-tenant.atlan.com`)
 3. **Access to Atlan** with a user account
 
-### Step 1: Install Python Dependencies
+### Step 1: Set Up Python Environment
 
+#### Option A: Quick Setup (Recommended)
 ```bash
 cd training-example
+./setup.sh  # This creates venv and installs dependencies
+```
+
+#### Option B: Manual Setup
+```bash
+cd training-example
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate  # On macOS/Linux
+# OR
+venv\Scripts\activate  # On Windows
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -68,6 +85,12 @@ export ATLAN_BASE_URL='https://mycompany.atlan.com'
 ### Step 4: Start the Backend
 
 ```bash
+# Make sure venv is activated
+source venv/bin/activate  # On macOS/Linux
+# OR
+venv\Scripts\activate  # On Windows
+
+# Start the backend
 python backend.py
 ```
 
