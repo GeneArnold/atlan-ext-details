@@ -37,6 +37,39 @@ def index():
     """Serve the main HTML page"""
     return render_template('index.html')
 
+@app.route('/api/asset/<guid>/debug')
+def debug_asset(guid):
+    """
+    Debug endpoint - returns raw API response to find description field
+    """
+    logger.info(f"DEBUG: Fetching raw asset data for: {guid}")
+
+    try:
+        # Extract token from Authorization header
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'No valid authorization token'}), 401
+
+        token = auth_header.replace('Bearer ', '')
+
+        # Call Atlan API
+        api_url = f"{ATLAN_BASE_URL}/api/meta/entity/guid/{guid}"
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json'
+        }
+
+        response = requests.get(api_url, headers=headers)
+
+        if response.status_code != 200:
+            return jsonify({'error': f'API error: {response.status_code}'}), response.status_code
+
+        # Return the raw response for debugging
+        return response.json()
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/health')
 def health():
     """Health check for Render"""
@@ -102,6 +135,28 @@ def get_asset(guid):
         # Extract asset details from API response
         attributes = entity.get('attributes', {})
 
+        # Debug logging to find description
+        logger.info("=== DEBUG: Looking for description ===")
+        logger.info(f"Attribute keys: {list(attributes.keys())}")
+
+        # Log ALL attributes to find where description is hiding
+        for key, value in attributes.items():
+            if value and isinstance(value, str) and len(value) > 20:
+                logger.info(f"Attribute {key}: {value[:100]}...")
+
+        # Check all possible description fields
+        desc_fields = ['description', 'userDescription', 'businessDescription', 'comment', 'remarks']
+        for field in desc_fields:
+            if field in attributes:
+                logger.info(f"Found {field}: {attributes[field][:100] if attributes[field] else 'None'}")
+
+        # Check relationship attributes for readme
+        rel_attrs = entity.get('relationshipAttributes', {})
+        if 'readme' in rel_attrs:
+            logger.info(f"Found readme in relationships: {rel_attrs['readme']}")
+
+        logger.info("=== END DEBUG ===")
+
         asset_details = {
             'guid': entity.get('guid', guid),
             'name': attributes.get('name') or entity.get('displayText') or 'Unknown',
@@ -110,6 +165,8 @@ def get_asset(guid):
             'description': (
                 attributes.get('userDescription') or
                 attributes.get('description') or
+                attributes.get('comment') or
+                attributes.get('remarks') or
                 entity.get('meanings', [{}])[0].get('displayText', 'No description available') if entity.get('meanings') else
                 'No description available'
             ),
