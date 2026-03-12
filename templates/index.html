@@ -189,6 +189,28 @@
         // Store auth context
         let authContext = null;
         let atlanClient = null;
+        let assetGuidFromMessage = null;  // Store GUID from raw postMessage
+
+        // Listen for raw postMessages to capture asset GUID
+        window.addEventListener('message', (event) => {
+            // Only accept messages from Atlan
+            if (event.origin !== ATLAN_INSTANCE_URL) return;
+
+            const { type, payload } = event.data || {};
+
+            // Capture ATLAN_AUTH_CONTEXT message for asset GUID
+            if (type === 'ATLAN_AUTH_CONTEXT') {
+                console.log('[ATLAN] Raw ATLAN_AUTH_CONTEXT received:', payload);
+
+                // Extract asset GUID from page context
+                if (payload?.page?.params?.id) {
+                    assetGuidFromMessage = payload.page.params.id;
+                    console.log('[ATLAN] ✅ Asset GUID captured from postMessage:', assetGuidFromMessage);
+                } else {
+                    console.log('[ATLAN] ⚠️ No asset GUID in page context:', payload?.page);
+                }
+            }
+        });
 
         /**
          * Initialize Atlan Auth SDK
@@ -205,23 +227,6 @@
                     console.log('[ATLAN] ✅ Authentication successful!', context);
                     authContext = context;
                     atlanClient = atlan;
-
-                    // Listen for any additional messages from Atlan
-                    window.addEventListener('message', (event) => {
-                        if (event.origin === ATLAN_INSTANCE_URL) {
-                            console.log('[ATLAN] Received postMessage:', event.data);
-
-                            // Check if message contains asset information
-                            if (event.data?.assetId || event.data?.guid || event.data?.id) {
-                                console.log('[ATLAN] Found asset info in message:', {
-                                    assetId: event.data.assetId,
-                                    guid: event.data.guid,
-                                    id: event.data.id
-                                });
-                            }
-                        }
-                    });
-
                     displayAuthenticatedContent();
                 },
 
@@ -251,23 +256,14 @@
             const mode = authContext.mode;
             const token = authContext.token || atlanClient.getToken();
 
-            // Asset GUID - check multiple possible locations
+            // Asset GUID - use the one captured from raw postMessage
             let assetGuid = null;
             if (mode === 'embedded') {
-                // In embedded mode, check URL parameters first
-                const urlParams = new URLSearchParams(window.location.search);
-                assetGuid = urlParams.get('id') || urlParams.get('guid') || urlParams.get('assetId');
-
-                // Also check if passed in hash
-                if (!assetGuid && window.location.hash) {
-                    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                    assetGuid = hashParams.get('id') || hashParams.get('guid') || hashParams.get('assetId');
-                }
-
-                console.log('[ATLAN] URL search params:', window.location.search);
-                console.log('[ATLAN] URL hash:', window.location.hash);
+                // In embedded mode, use GUID captured from ATLAN_AUTH_CONTEXT message
+                assetGuid = assetGuidFromMessage;
+                console.log('[ATLAN] Using asset GUID from postMessage:', assetGuid);
             } else {
-                // In standalone mode, get from page context
+                // In standalone mode, get from page context (if available)
                 assetGuid = authContext.page?.params?.id || null;
             }
 
@@ -284,14 +280,6 @@
                 assignedRole: user?.assignedRole?.name || 'undefined'
             });
             console.log('[ATLAN] Full authContext:', authContext);
-
-            // Check for alternative GUID locations
-            if (!assetGuid && mode === 'embedded') {
-                console.warn('[ATLAN] Asset GUID not found in expected location. Checking alternatives...');
-                console.log('[ATLAN] authContext.assetId:', authContext.assetId);
-                console.log('[ATLAN] authContext.asset:', authContext.asset);
-                console.log('[ATLAN] authContext.guid:', authContext.guid);
-            }
 
             let contentHTML = `
                 <div class="info-section">
@@ -399,13 +387,19 @@
                         <span class="label">URL hash:</span>
                         <span class="value mono" style="font-size: 11px;">${window.location.hash || 'none'}</span>
                     </div>
+                    <div class="data-field">
+                        <span class="label">Asset GUID Source:</span>
+                        <span class="value" style="color: ${assetGuidFromMessage ? '#28a745' : '#dc3545'};">
+                            ${assetGuidFromMessage ? 'Captured from ATLAN_AUTH_CONTEXT' : 'Not received in postMessage'}
+                        </span>
+                    </div>
                     <div class="data-field" style="background: #fff3cd; padding: 10px; margin-top: 10px; border-radius: 4px;">
-                        <span style="color: #856404; font-weight: bold;">⚠️ Data Structure Issue:</span><br>
+                        <span style="color: #856404; font-weight: bold;">ℹ️ SDK Implementation Notes:</span><br>
                         <span style="color: #856404; font-size: 12px;">
-                            Embedded mode returns different user fields than standalone mode:<br>
-                            • Embedded: id, username, email, name (simple profile)<br>
-                            • Standalone: userId, username, workspaceRole, permissions, etc. (full context)<br>
-                            • No page context in embedded mode (missing asset GUID)
+                            • Asset GUID is in raw ATLAN_AUTH_CONTEXT message (payload.page.params.id)<br>
+                            • Atlan Auth SDK strips page context in embedded mode<br>
+                            • Using raw postMessage listener to capture GUID before SDK processes it<br>
+                            • User data structure differs between modes (see above)
                         </span>
                     </div>
                 </div>

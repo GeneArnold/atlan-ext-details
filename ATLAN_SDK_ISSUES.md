@@ -42,17 +42,20 @@ The SDK returns completely different user data structures depending on the mode:
 - **Display name**: Not provided (standalone) vs `name` field (embedded)
 - **Permissions/Roles**: Full context (standalone) vs not provided (embedded)
 
-## Issue 2: Missing Asset Context in Embedded Mode
+## Issue 2: Asset Context Stripped by SDK in Embedded Mode
 
 When running as an external tab on an asset page:
 
+### Root Cause
+The raw `ATLAN_AUTH_CONTEXT` postMessage DOES contain the asset GUID at `payload.page.params.id`, but the Atlan Auth SDK strips this data when processing the message in embedded mode.
+
 ### Expected Behavior
-The SDK should provide the current asset's GUID through `authContext.page.params.id`
+The SDK should preserve and provide the current asset's GUID through `authContext.page.params.id`
 
 ### Actual Behavior
-- No `page` object in `authContext` at all
-- Asset GUID is not passed via iframe URL parameters
-- Asset GUID is not sent via postMessage
+- Raw postMessage contains: `payload.page.params.id` with the asset GUID ✅
+- SDK strips the `page` object in embedded mode ❌
+- No `page` object in `authContext` after SDK processing
 
 ### authContext Structure
 ```javascript
@@ -75,14 +78,30 @@ The SDK should provide the current asset's GUID through `authContext.page.params
 ## Workaround Code
 
 ```javascript
+// Capture asset GUID from raw postMessage before SDK strips it
+let assetGuidFromMessage = null;
+
+window.addEventListener('message', (event) => {
+    if (event.origin !== ATLAN_INSTANCE_URL) return;
+
+    const { type, payload } = event.data || {};
+
+    if (type === 'ATLAN_AUTH_CONTEXT') {
+        // Extract asset GUID before SDK processes message
+        if (payload?.page?.params?.id) {
+            assetGuidFromMessage = payload.page.params.id;
+        }
+    }
+});
+
+// In your display logic:
+const assetGuid = mode === 'embedded' ? assetGuidFromMessage : authContext.page?.params?.id;
+
 // Handle different user ID fields
 const userId = user?.userId || user?.id || 'N/A';
 
 // Handle different email fields
 const email = user?.email || user?.username || 'N/A';
-
-// Asset GUID - currently no solution for embedded mode
-const assetGuid = authContext.page?.params?.id || null;
 ```
 
 ## Recommendations for Atlan
