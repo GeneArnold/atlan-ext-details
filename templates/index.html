@@ -235,7 +235,14 @@
 
             console.log('[ATLAN] Mode:', mode);
             console.log('[ATLAN] Asset GUID:', assetGuid);
-            console.log('[ATLAN] User:', user);
+            console.log('[ATLAN] User object received:', user);
+            console.log('[ATLAN] User fields:', {
+                id: user?.id || 'undefined',
+                username: user?.username || 'undefined',
+                email: user?.email || 'undefined',
+                name: user?.name || 'undefined'
+            });
+            console.log('[ATLAN] Full authContext:', authContext);
 
             let contentHTML = `
                 <div class="info-section">
@@ -258,19 +265,27 @@
                     <h2><span class="icon">👤</span> User Information (OAuth Handshake Data)</h2>
                     <div class="data-field">
                         <span class="label">User ID:</span>
-                        <span class="value mono">${user.id || 'N/A'}</span>
+                        <span class="value mono">${user?.id || 'N/A'}</span>
                     </div>
                     <div class="data-field">
                         <span class="label">Username:</span>
-                        <span class="value">${user.username || 'N/A'}</span>
+                        <span class="value">${user?.username || 'N/A'}</span>
                     </div>
                     <div class="data-field">
                         <span class="label">Email:</span>
-                        <span class="value">${user.email || 'N/A'}</span>
+                        <span class="value">${user?.email || 'N/A'}</span>
                     </div>
                     <div class="data-field">
                         <span class="label">Display Name:</span>
-                        <span class="value">${user.name || 'N/A'}</span>
+                        <span class="value">${user?.name || 'N/A'}</span>
+                    </div>
+                </div>
+
+                <div class="info-section" style="background: #fff3cd; border-left-color: #ffc107;">
+                    <h2><span class="icon">🔍</span> Debug: Raw User Object</h2>
+                    <div class="data-field">
+                        <span class="label">All Fields:</span>
+                        <span class="value mono" style="font-size: 11px; white-space: pre-wrap;">${JSON.stringify(user, null, 2) || 'No user object'}</span>
                     </div>
                 </div>
 
