@@ -286,6 +286,22 @@
                         <span class="label">Profile Role:</span>
                         <span class="value">${user?.profileRole || 'N/A'}</span>
                     </div>
+                    <div class="data-field">
+                        <span class="label">Designation:</span>
+                        <span class="value">${user?.designation || 'Not specified'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Groups:</span>
+                        <span class="value">${user?.groups?.length > 0 ? user.groups.join(', ') : 'No group memberships'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Permission Count:</span>
+                        <span class="value"><strong style="color: #3366FF;">${user?.permissions?.length || 0}</strong> permissions</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">Role Count:</span>
+                        <span class="value"><strong style="color: #3366FF;">${user?.roles?.length || 0}</strong> roles assigned</span>
+                    </div>
                 </div>
 
                 <div class="info-section">
