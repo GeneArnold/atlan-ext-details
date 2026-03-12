@@ -205,6 +205,23 @@
                     console.log('[ATLAN] ✅ Authentication successful!', context);
                     authContext = context;
                     atlanClient = atlan;
+
+                    // Listen for any additional messages from Atlan
+                    window.addEventListener('message', (event) => {
+                        if (event.origin === ATLAN_INSTANCE_URL) {
+                            console.log('[ATLAN] Received postMessage:', event.data);
+
+                            // Check if message contains asset information
+                            if (event.data?.assetId || event.data?.guid || event.data?.id) {
+                                console.log('[ATLAN] Found asset info in message:', {
+                                    assetId: event.data.assetId,
+                                    guid: event.data.guid,
+                                    id: event.data.id
+                                });
+                            }
+                        }
+                    });
+
                     displayAuthenticatedContent();
                 },
 
@@ -232,8 +249,27 @@
             // Note: No separate email or name fields provided
             const user = authContext.user;
             const mode = authContext.mode;
-            const assetGuid = authContext.page?.params?.id || null;
             const token = authContext.token || atlanClient.getToken();
+
+            // Asset GUID - check multiple possible locations
+            let assetGuid = null;
+            if (mode === 'embedded') {
+                // In embedded mode, check URL parameters first
+                const urlParams = new URLSearchParams(window.location.search);
+                assetGuid = urlParams.get('id') || urlParams.get('guid') || urlParams.get('assetId');
+
+                // Also check if passed in hash
+                if (!assetGuid && window.location.hash) {
+                    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                    assetGuid = hashParams.get('id') || hashParams.get('guid') || hashParams.get('assetId');
+                }
+
+                console.log('[ATLAN] URL search params:', window.location.search);
+                console.log('[ATLAN] URL hash:', window.location.hash);
+            } else {
+                // In standalone mode, get from page context
+                assetGuid = authContext.page?.params?.id || null;
+            }
 
             console.log('[ATLAN] Mode:', mode);
             console.log('[ATLAN] Asset GUID:', assetGuid);
@@ -281,37 +317,63 @@
                         <span class="value mono">${user?.userId || user?.id || 'N/A'}</span>
                     </div>
                     <div class="data-field">
-                        <span class="label">Username/Email:</span>
-                        <span class="value">${user?.username || user?.email || 'N/A'}</span>
+                        <span class="label">Username:</span>
+                        <span class="value">${user?.username || 'N/A'}</span>
                     </div>
+                    ${user?.email ? `
+                    <div class="data-field">
+                        <span class="label">Email:</span>
+                        <span class="value">${user.email}</span>
+                    </div>
+                    ` : ''}
+                    ${user?.name ? `
+                    <div class="data-field">
+                        <span class="label">Display Name:</span>
+                        <span class="value">${user.name}</span>
+                    </div>
+                    ` : ''}
+                    ${user?.workspaceRole ? `
                     <div class="data-field">
                         <span class="label">Workspace Role:</span>
-                        <span class="value">${user?.workspaceRole || user?.role || 'N/A'}</span>
+                        <span class="value">${user.workspaceRole}</span>
                     </div>
+                    ` : ''}
+                    ${user?.assignedRole ? `
                     <div class="data-field">
                         <span class="label">Assigned Role:</span>
-                        <span class="value">${user?.assignedRole?.name || user?.assignedRole || 'N/A'} ${user?.assignedRole?.description ? `(${user?.assignedRole?.description})` : ''}</span>
+                        <span class="value">${user.assignedRole.name || user.assignedRole} ${user.assignedRole.description ? `(${user.assignedRole.description})` : ''}</span>
                     </div>
+                    ` : ''}
+                    ${user?.profileRole ? `
                     <div class="data-field">
                         <span class="label">Profile Role:</span>
-                        <span class="value">${user?.profileRole || user?.role || 'N/A'}</span>
+                        <span class="value">${user.profileRole}</span>
                     </div>
+                    ` : ''}
+                    ${user?.designation ? `
                     <div class="data-field">
                         <span class="label">Designation:</span>
-                        <span class="value">${user?.designation || 'Not specified'}</span>
+                        <span class="value">${user.designation}</span>
                     </div>
+                    ` : ''}
+                    ${user?.groups?.length > 0 ? `
                     <div class="data-field">
                         <span class="label">Groups:</span>
-                        <span class="value">${user?.groups?.length > 0 ? user.groups.join(', ') : 'No group memberships'}</span>
+                        <span class="value">${user.groups.join(', ')}</span>
                     </div>
+                    ` : ''}
+                    ${user?.permissions?.length > 0 ? `
                     <div class="data-field">
                         <span class="label">Permission Count:</span>
-                        <span class="value"><strong style="color: #3366FF;">${user?.permissions?.length || 0}</strong> permissions</span>
+                        <span class="value"><strong style="color: #3366FF;">${user.permissions.length}</strong> permissions</span>
                     </div>
+                    ` : ''}
+                    ${user?.roles?.length > 0 ? `
                     <div class="data-field">
                         <span class="label">Role Count:</span>
-                        <span class="value"><strong style="color: #3366FF;">${user?.roles?.length || 0}</strong> roles assigned</span>
+                        <span class="value"><strong style="color: #3366FF;">${user.roles.length}</strong> roles assigned</span>
                     </div>
+                    ` : ''}
                 </div>
 
                 ${mode === 'embedded' ? `
@@ -325,12 +387,27 @@
                         <span class="label">user keys:</span>
                         <span class="value mono" style="font-size: 11px;">${Object.keys(user || {}).join(', ')}</span>
                     </div>
-                    ${authContext.page ? `
                     <div class="data-field">
-                        <span class="label">page keys:</span>
-                        <span class="value mono" style="font-size: 11px;">${Object.keys(authContext.page || {}).join(', ')}</span>
+                        <span class="label">iframe URL:</span>
+                        <span class="value mono" style="font-size: 10px; word-break: break-all;">${window.location.href}</span>
                     </div>
-                    ` : ''}
+                    <div class="data-field">
+                        <span class="label">URL search params:</span>
+                        <span class="value mono" style="font-size: 11px;">${window.location.search || 'none'}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">URL hash:</span>
+                        <span class="value mono" style="font-size: 11px;">${window.location.hash || 'none'}</span>
+                    </div>
+                    <div class="data-field" style="background: #fff3cd; padding: 10px; margin-top: 10px; border-radius: 4px;">
+                        <span style="color: #856404; font-weight: bold;">⚠️ Data Structure Issue:</span><br>
+                        <span style="color: #856404; font-size: 12px;">
+                            Embedded mode returns different user fields than standalone mode:<br>
+                            • Embedded: id, username, email, name (simple profile)<br>
+                            • Standalone: userId, username, workspaceRole, permissions, etc. (full context)<br>
+                            • No page context in embedded mode (missing asset GUID)
+                        </span>
+                    </div>
                 </div>
                 ` : ''}
 
