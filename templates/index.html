@@ -237,6 +237,8 @@
 
             console.log('[ATLAN] Mode:', mode);
             console.log('[ATLAN] Asset GUID:', assetGuid);
+            console.log('[ATLAN] Page context:', authContext.page);
+            console.log('[ATLAN] Page params:', authContext.page?.params);
             console.log('[ATLAN] User object received:', user);
             console.log('[ATLAN] User fields:', {
                 userId: user?.userId || 'undefined',
@@ -246,6 +248,14 @@
                 assignedRole: user?.assignedRole?.name || 'undefined'
             });
             console.log('[ATLAN] Full authContext:', authContext);
+
+            // Check for alternative GUID locations
+            if (!assetGuid && mode === 'embedded') {
+                console.warn('[ATLAN] Asset GUID not found in expected location. Checking alternatives...');
+                console.log('[ATLAN] authContext.assetId:', authContext.assetId);
+                console.log('[ATLAN] authContext.asset:', authContext.asset);
+                console.log('[ATLAN] authContext.guid:', authContext.guid);
+            }
 
             let contentHTML = `
                 <div class="info-section">
@@ -268,23 +278,23 @@
                     <h2><span class="icon">👤</span> User Information (OAuth Handshake Data)</h2>
                     <div class="data-field">
                         <span class="label">User ID:</span>
-                        <span class="value mono">${user?.userId || 'N/A'}</span>
+                        <span class="value mono">${user?.userId || user?.id || 'N/A'}</span>
                     </div>
                     <div class="data-field">
                         <span class="label">Username/Email:</span>
-                        <span class="value">${user?.username || 'N/A'}</span>
+                        <span class="value">${user?.username || user?.email || 'N/A'}</span>
                     </div>
                     <div class="data-field">
                         <span class="label">Workspace Role:</span>
-                        <span class="value">${user?.workspaceRole || 'N/A'}</span>
+                        <span class="value">${user?.workspaceRole || user?.role || 'N/A'}</span>
                     </div>
                     <div class="data-field">
                         <span class="label">Assigned Role:</span>
-                        <span class="value">${user?.assignedRole?.name || 'N/A'} ${user?.assignedRole?.description ? `(${user?.assignedRole?.description})` : ''}</span>
+                        <span class="value">${user?.assignedRole?.name || user?.assignedRole || 'N/A'} ${user?.assignedRole?.description ? `(${user?.assignedRole?.description})` : ''}</span>
                     </div>
                     <div class="data-field">
                         <span class="label">Profile Role:</span>
-                        <span class="value">${user?.profileRole || 'N/A'}</span>
+                        <span class="value">${user?.profileRole || user?.role || 'N/A'}</span>
                     </div>
                     <div class="data-field">
                         <span class="label">Designation:</span>
@@ -303,6 +313,26 @@
                         <span class="value"><strong style="color: #3366FF;">${user?.roles?.length || 0}</strong> roles assigned</span>
                     </div>
                 </div>
+
+                ${mode === 'embedded' ? `
+                <div class="info-section" style="background: #e7f5ff; border-left-color: #3366FF;">
+                    <h2><span class="icon">🐛</span> Debug: Embedded Mode Data</h2>
+                    <div class="data-field">
+                        <span class="label">authContext keys:</span>
+                        <span class="value mono" style="font-size: 11px;">${Object.keys(authContext || {}).join(', ')}</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="label">user keys:</span>
+                        <span class="value mono" style="font-size: 11px;">${Object.keys(user || {}).join(', ')}</span>
+                    </div>
+                    ${authContext.page ? `
+                    <div class="data-field">
+                        <span class="label">page keys:</span>
+                        <span class="value mono" style="font-size: 11px;">${Object.keys(authContext.page || {}).join(', ')}</span>
+                    </div>
+                    ` : ''}
+                </div>
+                ` : ''}
 
                 <div class="info-section">
                     <h2><span class="icon">📄</span> Asset Information</h2>
