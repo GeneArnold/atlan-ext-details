@@ -135,40 +135,47 @@ ${user?.workspaceRole ? `<div>Role: ${user.workspaceRole}</div>` : ''}
 
 ---
 
-## Backend Integration Challenges
+## Backend Integration Solution
 
-### Current Status
-- ✅ Authentication token passed correctly
-- ✅ Asset GUID now captured
-- ❌ Backend returns 500 when fetching asset details
+### The Problem
+The OAuth JWT token from authentication cannot be used as an API key for the pyatlan SDK.
 
-### Likely Causes
-1. **Token Type Mismatch**: OAuth JWT token might not work as API key
-2. **Permissions**: Token might lack permissions for asset API
-3. **SDK Initialization**: pyatlan might need different auth setup
+### The Solution
+Use Atlan's REST API directly with the Bearer token:
 
-### Backend Code Structure
 ```python
 @app.route('/api/asset/<guid>')
 def get_asset(guid):
     # Extract Bearer token from header
     token = auth_header.replace('Bearer ', '')
 
-    # Initialize Atlan client
-    client = AtlanClient(
-        base_url=ATLAN_BASE_URL,
-        api_key=token  # OAuth token used as API key
-    )
+    # Use Atlan REST API directly
+    api_url = f"{ATLAN_BASE_URL}/api/meta/entity/guid/{guid}"
 
-    # Fetch asset - THIS FAILS WITH 500
-    asset = client.asset.get_by_guid(guid=guid)
+    headers = {
+        'Authorization': f'Bearer {token}',  # OAuth token as Bearer
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.get(api_url, headers=headers)
+    asset_data = response.json()
+
+    # Parse the Atlan API response structure
+    entity = asset_data.get('entity', asset_data)
+    attributes = entity.get('attributes', {})
 ```
 
-### Debug Steps Taken
-1. Verified token is being passed
-2. Confirmed GUID is valid format
-3. Backend receives both correctly
-4. Error occurs in pyatlan SDK call
+### Key Differences
+| Approach | Authentication | Result |
+|----------|---------------|---------|
+| pyatlan SDK | API Key expected | ❌ 500 Error |
+| REST API | Bearer token | ✅ Works |
+
+### Current Status
+- ✅ Authentication token passed as Bearer
+- ✅ Asset GUID captured from postMessage
+- ✅ Asset details fetched successfully
+- ✅ Data displayed in UI
 
 ---
 
@@ -184,7 +191,7 @@ def get_asset(guid):
 ✅ **SOLVED**: SDK handles both modes automatically
 
 ### 4. Asset Data Fetching
-⚠️ **PENDING**: Backend integration needs different auth approach
+✅ **SOLVED**: Use Atlan REST API with OAuth Bearer token
 
 ---
 
@@ -299,4 +306,14 @@ When things don't work:
 
 **Last Updated**: March 2026
 **Author**: Gene Arnold
-**Status**: Asset GUID ✅ | User Info ✅ | Backend Integration ⚠️
+**Status**: Asset GUID ✅ | User Info ✅ | Backend Integration ✅
+
+## Complete Working Solution
+
+The External Details Tab is now fully functional with all three critical components working:
+
+1. **Asset GUID Capture**: Using raw postMessage listener before SDK initialization
+2. **User Information**: Adaptive display for both standalone and embedded modes
+3. **Backend Integration**: Direct REST API calls with OAuth Bearer token
+
+The app successfully displays asset information when running as an external tab in Atlan!
