@@ -157,19 +157,29 @@ def get_asset(guid):
 
         logger.info("=== END DEBUG ===")
 
+        # Get description - userDescription is the field we need!
+        description = attributes.get('userDescription')
+        logger.info(f"userDescription field: {description[:100] if description else 'None'}")
+
+        if not description:
+            description = attributes.get('description')
+        if not description:
+            description = attributes.get('comment')
+        if not description:
+            description = attributes.get('remarks')
+        if not description:
+            meanings = entity.get('meanings', [])
+            if meanings and len(meanings) > 0:
+                description = meanings[0].get('displayText', 'No description available')
+            else:
+                description = 'No description available'
+
         asset_details = {
             'guid': entity.get('guid', guid),
             'name': attributes.get('name') or entity.get('displayText') or 'Unknown',
             'type_name': entity.get('typeName', 'Unknown'),
             'qualified_name': attributes.get('qualifiedName', 'N/A'),
-            'description': (
-                attributes.get('userDescription') or
-                attributes.get('description') or
-                attributes.get('comment') or
-                attributes.get('remarks') or
-                entity.get('meanings', [{}])[0].get('displayText', 'No description available') if entity.get('meanings') else
-                'No description available'
-            ),
+            'description': description,
             'created_by': entity.get('createdBy', 'Unknown'),
             'modified_by': entity.get('updatedBy', 'Unknown'),
             'certificate_status': attributes.get('certificateStatus', 'N/A')
