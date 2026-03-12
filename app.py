@@ -21,7 +21,7 @@ CORS(app, origins=[
 ])
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+logging.basicConfig(level=logging.WARNING, format='[%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
 # Configuration from environment
@@ -37,38 +37,6 @@ def index():
     """Serve the main HTML page"""
     return render_template('index.html')
 
-@app.route('/api/asset/<guid>/debug')
-def debug_asset(guid):
-    """
-    Debug endpoint - returns raw API response to find description field
-    """
-    logger.info(f"DEBUG: Fetching raw asset data for: {guid}")
-
-    try:
-        # Extract token from Authorization header
-        auth_header = request.headers.get('Authorization', '')
-        if not auth_header.startswith('Bearer '):
-            return jsonify({'error': 'No valid authorization token'}), 401
-
-        token = auth_header.replace('Bearer ', '')
-
-        # Call Atlan API
-        api_url = f"{ATLAN_BASE_URL}/api/meta/entity/guid/{guid}"
-        headers = {
-            'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json'
-        }
-
-        response = requests.get(api_url, headers=headers)
-
-        if response.status_code != 200:
-            return jsonify({'error': f'API error: {response.status_code}'}), response.status_code
-
-        # Return the raw response for debugging
-        return response.json()
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/health')
 def health():
@@ -82,7 +50,6 @@ def health():
 @app.route('/api/health')
 def api_health():
     """API health check"""
-    logger.info("API health check requested")
     return jsonify({
         'status': 'healthy',
         'message': 'Atlan external tab API is running',
@@ -94,7 +61,6 @@ def get_asset(guid):
     """
     Fetch asset details from Atlan using REST API with OAuth Bearer token
     """
-    logger.info(f"Fetching asset: {guid}")
 
     try:
         # Extract token from Authorization header
@@ -105,7 +71,6 @@ def get_asset(guid):
         token = auth_header.replace('Bearer ', '')
 
         # Use Atlan REST API directly with Bearer token
-        # Atlan API endpoint for fetching asset by GUID
         api_url = f"{ATLAN_BASE_URL}/api/meta/entity/guid/{guid}"
 
         headers = {
@@ -113,7 +78,6 @@ def get_asset(guid):
             'Content-Type': 'application/json'
         }
 
-        logger.info(f"Calling Atlan API: {api_url}")
         response = requests.get(api_url, headers=headers)
 
         if response.status_code == 404:
@@ -121,7 +85,6 @@ def get_asset(guid):
         elif response.status_code == 401:
             return jsonify({'error': 'Authentication failed - token may be invalid'}), 401
         elif response.status_code != 200:
-            logger.error(f"API returned status {response.status_code}: {response.text}")
             return jsonify({'error': f'API error: {response.status_code}'}), response.status_code
 
         # Parse the response
@@ -135,31 +98,8 @@ def get_asset(guid):
         # Extract asset details from API response
         attributes = entity.get('attributes', {})
 
-        # Debug logging to find description
-        logger.info("=== DEBUG: Looking for description ===")
-        logger.info(f"Attribute keys: {list(attributes.keys())}")
-
-        # Log ALL attributes to find where description is hiding
-        for key, value in attributes.items():
-            if value and isinstance(value, str) and len(value) > 20:
-                logger.info(f"Attribute {key}: {value[:100]}...")
-
-        # Check all possible description fields
-        desc_fields = ['description', 'userDescription', 'businessDescription', 'comment', 'remarks']
-        for field in desc_fields:
-            if field in attributes:
-                logger.info(f"Found {field}: {attributes[field][:100] if attributes[field] else 'None'}")
-
-        # Check relationship attributes for readme
-        rel_attrs = entity.get('relationshipAttributes', {})
-        if 'readme' in rel_attrs:
-            logger.info(f"Found readme in relationships: {rel_attrs['readme']}")
-
-        logger.info("=== END DEBUG ===")
-
         # Get description - userDescription is the field we need!
         description = attributes.get('userDescription')
-        logger.info(f"userDescription field: {description[:100] if description else 'None'}")
 
         if not description:
             description = attributes.get('description')
@@ -193,7 +133,6 @@ def get_asset(guid):
         if 'tableName' in attributes:
             asset_details['table_name'] = attributes['tableName']
 
-        logger.info(f"Successfully fetched asset: {asset_details['name']}")
         return jsonify(asset_details)
 
     except requests.exceptions.RequestException as e:
@@ -220,6 +159,4 @@ def internal_error(error):
 # ============================================
 
 if __name__ == '__main__':
-    logger.info(f"Starting Atlan External Tab on port {PORT}")
-    logger.info(f"Atlan URL: {ATLAN_BASE_URL}")
     app.run(host='0.0.0.0', port=PORT, debug=False)

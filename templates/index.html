@@ -200,14 +200,10 @@
 
             // Capture ATLAN_AUTH_CONTEXT message for asset GUID
             if (type === 'ATLAN_AUTH_CONTEXT') {
-                console.log('[ATLAN] Raw ATLAN_AUTH_CONTEXT received:', payload);
-
                 // Extract asset GUID from page context
                 if (payload?.page?.params?.id) {
                     assetGuidFromMessage = payload.page.params.id;
-                    console.log('[ATLAN] ✅ Asset GUID captured from postMessage:', assetGuidFromMessage);
-                } else {
-                    console.log('[ATLAN] ⚠️ No asset GUID in page context:', payload?.page);
+                    console.log('[ATLAN] Asset GUID captured:', assetGuidFromMessage);
                 }
             }
         });
@@ -217,14 +213,12 @@
          */
         function initializeAtlan() {
             console.log('[ATLAN] Initializing Auth SDK...');
-            console.log('[ATLAN] Instance URL:', ATLAN_INSTANCE_URL);
-            console.log('[ATLAN] Current URL:', window.location.href);
 
             const atlan = new AtlanAuth({
                 origin: ATLAN_INSTANCE_URL,
 
                 onReady: (context) => {
-                    console.log('[ATLAN] ✅ Authentication successful!', context);
+                    console.log('[ATLAN] ✅ Authentication successful!');
                     authContext = context;
                     atlanClient = atlan;
                     displayAuthenticatedContent();
@@ -233,9 +227,7 @@
                 onError: (error) => {
                     console.error('[ATLAN] ❌ Authentication failed:', error);
                     displayError(error.message || 'Authentication failed');
-                },
-
-                debug: true
+                }
             });
 
             atlan.init();
@@ -245,13 +237,6 @@
          * Display content after authentication
          */
         async function displayAuthenticatedContent() {
-            // User object from Atlan OAuth actually contains:
-            // - userId: User's unique identifier
-            // - username: User's email address (e.g., "gene.arnold@atlan.com")
-            // - workspaceRole: User's role (e.g., "$admin")
-            // - assignedRole: Object with role details
-            // - permissions: Array of permission strings
-            // Note: No separate email or name fields provided
             const user = authContext.user;
             const mode = authContext.mode;
             const token = authContext.token || atlanClient.getToken();
@@ -261,25 +246,12 @@
             if (mode === 'embedded') {
                 // In embedded mode, use GUID captured from ATLAN_AUTH_CONTEXT message
                 assetGuid = assetGuidFromMessage;
-                console.log('[ATLAN] Using asset GUID from postMessage:', assetGuid);
             } else {
                 // In standalone mode, get from page context (if available)
                 assetGuid = authContext.page?.params?.id || null;
             }
 
-            console.log('[ATLAN] Mode:', mode);
-            console.log('[ATLAN] Asset GUID:', assetGuid);
-            console.log('[ATLAN] Page context:', authContext.page);
-            console.log('[ATLAN] Page params:', authContext.page?.params);
-            console.log('[ATLAN] User object received:', user);
-            console.log('[ATLAN] User fields:', {
-                userId: user?.userId || 'undefined',
-                username: user?.username || 'undefined',
-                workspaceRole: user?.workspaceRole || 'undefined',
-                profileRole: user?.profileRole || 'undefined',
-                assignedRole: user?.assignedRole?.name || 'undefined'
-            });
-            console.log('[ATLAN] Full authContext:', authContext);
+            console.log('[ATLAN] Mode:', mode, '| Asset GUID:', assetGuid || 'N/A');
 
             let contentHTML = `
                 <div class="info-section">
@@ -364,47 +336,6 @@
                     ` : ''}
                 </div>
 
-                ${mode === 'embedded' ? `
-                <div class="info-section" style="background: #e7f5ff; border-left-color: #3366FF;">
-                    <h2><span class="icon">🐛</span> Debug: Embedded Mode Data</h2>
-                    <div class="data-field">
-                        <span class="label">authContext keys:</span>
-                        <span class="value mono" style="font-size: 11px;">${Object.keys(authContext || {}).join(', ')}</span>
-                    </div>
-                    <div class="data-field">
-                        <span class="label">user keys:</span>
-                        <span class="value mono" style="font-size: 11px;">${Object.keys(user || {}).join(', ')}</span>
-                    </div>
-                    <div class="data-field">
-                        <span class="label">iframe URL:</span>
-                        <span class="value mono" style="font-size: 10px; word-break: break-all;">${window.location.href}</span>
-                    </div>
-                    <div class="data-field">
-                        <span class="label">URL search params:</span>
-                        <span class="value mono" style="font-size: 11px;">${window.location.search || 'none'}</span>
-                    </div>
-                    <div class="data-field">
-                        <span class="label">URL hash:</span>
-                        <span class="value mono" style="font-size: 11px;">${window.location.hash || 'none'}</span>
-                    </div>
-                    <div class="data-field">
-                        <span class="label">Asset GUID Source:</span>
-                        <span class="value" style="color: ${assetGuidFromMessage ? '#28a745' : '#dc3545'};">
-                            ${assetGuidFromMessage ? 'Captured from ATLAN_AUTH_CONTEXT' : 'Not received in postMessage'}
-                        </span>
-                    </div>
-                    <div class="data-field" style="background: #fff3cd; padding: 10px; margin-top: 10px; border-radius: 4px;">
-                        <span style="color: #856404; font-weight: bold;">ℹ️ SDK Implementation Notes:</span><br>
-                        <span style="color: #856404; font-size: 12px;">
-                            • Asset GUID is in raw ATLAN_AUTH_CONTEXT message (payload.page.params.id)<br>
-                            • Atlan Auth SDK strips page context in embedded mode<br>
-                            • Using raw postMessage listener to capture GUID before SDK processes it<br>
-                            • User data structure differs between modes (see above)
-                        </span>
-                    </div>
-                </div>
-                ` : ''}
-
                 <div class="info-section">
                     <h2><span class="icon">📄</span> Asset Information</h2>
                     <div class="data-field">
@@ -441,8 +372,6 @@
          * Fetch asset details from backend
          */
         async function fetchAssetDetails(guid, token) {
-            console.log('[ATLAN] Fetching asset details for:', guid);
-
             try {
                 const response = await fetch(`${BACKEND_URL}/api/asset/${guid}`, {
                     method: 'GET',
@@ -457,7 +386,6 @@
                 }
 
                 const assetData = await response.json();
-                console.log('[ATLAN] Asset data received:', assetData);
 
                 document.getElementById('asset-details').innerHTML = `
                     <div class="data-field">
@@ -479,7 +407,6 @@
                 `;
 
             } catch (error) {
-                console.error('[ATLAN] Failed to fetch asset details:', error);
                 document.getElementById('asset-details').innerHTML = `
                     <div class="data-field">
                         <span class="label">Error:</span>
@@ -510,7 +437,6 @@
         }
 
         // Start the application
-        console.log('[ATLAN] Starting application...');
         initializeAtlan();
     </script>
 </body>
