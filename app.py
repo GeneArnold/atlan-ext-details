@@ -5,7 +5,7 @@ This combines the frontend and backend into a single Flask application
 
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
-from pyatlan.client.atlan import AtlanClient
+import requests
 import logging
 import os
 
@@ -59,7 +59,7 @@ def api_health():
 @app.route('/api/asset/<guid>')
 def get_asset(guid):
     """
-    Fetch asset details from Atlan using pyatlan SDK
+    Fetch asset details from Atlan using REST API with OAuth Bearer token
     """
     logger.info(f"Fetching asset: {guid}")
 
@@ -71,45 +71,67 @@ def get_asset(guid):
 
         token = auth_header.replace('Bearer ', '')
 
-        # Initialize Atlan client
-        client = AtlanClient(
-            base_url=ATLAN_BASE_URL,
-            api_key=token
-        )
+        # Use Atlan REST API directly with Bearer token
+        # Atlan API endpoint for fetching asset by GUID
+        api_url = f"{ATLAN_BASE_URL}/api/meta/entity/guid/{guid}"
 
-        # Fetch asset
-        asset = client.asset.get_by_guid(
-            guid=guid,
-            min_ext_info=False,
-            ignore_relationships=False
-        )
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json'
+        }
 
-        if not asset:
+        logger.info(f"Calling Atlan API: {api_url}")
+        response = requests.get(api_url, headers=headers)
+
+        if response.status_code == 404:
             return jsonify({'error': f'Asset not found: {guid}'}), 404
+        elif response.status_code == 401:
+            return jsonify({'error': 'Authentication failed - token may be invalid'}), 401
+        elif response.status_code != 200:
+            logger.error(f"API returned status {response.status_code}: {response.text}")
+            return jsonify({'error': f'API error: {response.status_code}'}), response.status_code
 
-        # Return asset details
+        # Parse the response
+        asset_data = response.json()
+
+        if 'entity' in asset_data:
+            entity = asset_data['entity']
+        else:
+            entity = asset_data
+
+        # Extract asset details from API response
+        attributes = entity.get('attributes', {})
+
         asset_details = {
-            'guid': asset.guid,
-            'name': asset.name,
-            'type_name': asset.type_name,
-            'qualified_name': asset.qualified_name,
-            'description': asset.user_description or asset.description or 'No description available',
-            'created_by': asset.created_by,
-            'modified_by': asset.modified_by,
-            'certificate_status': asset.certificate_status
+            'guid': entity.get('guid', guid),
+            'name': attributes.get('name') or entity.get('displayText') or 'Unknown',
+            'type_name': entity.get('typeName', 'Unknown'),
+            'qualified_name': attributes.get('qualifiedName', 'N/A'),
+            'description': (
+                attributes.get('userDescription') or
+                attributes.get('description') or
+                entity.get('meanings', [{}])[0].get('displayText', 'No description available') if entity.get('meanings') else
+                'No description available'
+            ),
+            'created_by': entity.get('createdBy', 'Unknown'),
+            'modified_by': entity.get('updatedBy', 'Unknown'),
+            'certificate_status': attributes.get('certificateStatus', 'N/A')
         }
 
         # Add type-specific fields if available
-        if hasattr(asset, 'database_name'):
-            asset_details['database_name'] = asset.database_name
-        if hasattr(asset, 'schema_name'):
-            asset_details['schema_name'] = asset.schema_name
-        if hasattr(asset, 'table_name'):
-            asset_details['table_name'] = asset.table_name
+        if 'databaseName' in attributes:
+            asset_details['database_name'] = attributes['databaseName']
+        if 'schemaName' in attributes:
+            asset_details['schema_name'] = attributes['schemaName']
+        if 'tableName' in attributes:
+            asset_details['table_name'] = attributes['tableName']
 
-        logger.info(f"Successfully fetched asset: {asset.name}")
+        logger.info(f"Successfully fetched asset: {asset_details['name']}")
         return jsonify(asset_details)
 
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error: {str(e)}")
+        return jsonify({'error': f'Failed to connect to Atlan API: {str(e)}'}), 500
     except Exception as e:
         logger.error(f"Error fetching asset: {str(e)}")
         return jsonify({'error': str(e)}), 500

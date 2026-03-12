@@ -4,8 +4,8 @@
 flask==2.3.3
 flask-cors==4.0.0
 
-# Atlan SDK for fetching asset data
-pyatlan==2.0.0
+# HTTP requests for Atlan REST API
+requests==2.31.0
 
 # Web server for production
 gunicorn==21.2.0
