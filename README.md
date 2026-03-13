@@ -9,12 +9,25 @@ A clean, production-ready external tab for Atlan that demonstrates OAuth authent
 **Live URL:** https://atlan-ext-details.onrender.com
 **Target Atlan:** https://fs3.atlan.com
 
+### Screenshots
+
+#### External Tab in Atlan Platform
+![External Details Tab integrated in Atlan](screenshot-atlan-integration.png)
+*The External Details tab appears alongside native Atlan tabs like Overview, Columns, and Lineage*
+
+#### Tab Content Display
+![External Details Tab content view](screenshot-tab-detail.png)
+*Clean display of authentication status, user information, and asset details including the description*
+
 ## 🎯 What This Does
 
-This external tab integrates into Atlan's asset profile pages and displays:
-1. **User Information** - Shows the authenticated user's details (proves OAuth is working)
-2. **Asset GUID** - Displays the current asset's unique identifier (proves iframe communication)
-3. **Asset Description** - Fetches and shows the asset's description using REST API (proves API integration)
+This external tab integrates into Atlan's asset profile pages and successfully demonstrates all three key integrations:
+
+✅ **OAuth Authentication** - User information from OAuth handshake displayed
+✅ **PostMessage Communication** - Asset GUID captured from iframe context
+✅ **REST API Integration** - Asset description retrieved and displayed
+
+As shown in the screenshots above, the integration is working in production with real asset data!
 
 ## 🚀 Current Status
 
