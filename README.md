@@ -1,6 +1,10 @@
 # Atlan External Details Tab
 
-A production-ready external tab for Atlan that displays asset information and demonstrates OAuth integration.
+A clean, production-ready external tab for Atlan that demonstrates OAuth authentication, iframe communication, and REST API integration - reducing OAuth complexity from 200+ lines to just 10 lines of code.
+
+## 🎬 See It In Action
+
+**[Watch the Demo Video](https://www.loom.com/share/693ff4c1e30a470b8c344a914803c4b7)** - See the external tab working live in Atlan!
 
 **Live URL:** https://atlan-ext-details.onrender.com
 **Target Atlan:** https://fs3.atlan.com
@@ -10,25 +14,29 @@ A production-ready external tab for Atlan that displays asset information and de
 This external tab integrates into Atlan's asset profile pages and displays:
 1. **User Information** - Shows the authenticated user's details (proves OAuth is working)
 2. **Asset GUID** - Displays the current asset's unique identifier (proves iframe communication)
-3. **Asset Description** - Fetches and shows the asset's description using pyatlan SDK (proves API integration)
+3. **Asset Description** - Fetches and shows the asset's description using REST API (proves API integration)
 
 ## 🚀 Current Status
 
 ✅ **Deployed to Render** at https://atlan-ext-details.onrender.com
-⏳ **Awaiting Configuration** - Needs to be added to Atlan's LaunchDarkly feature flag
+✅ **Working in Production** - Successfully integrated with Atlan at fs3.atlan.com
 
-## 📦 Production Files (What Actually Runs)
+## 📦 Clean Project Structure
 
 ```
 /
-├── app.py                    # Flask application (serves frontend and API)
+├── app.py                       # Flask application (serves frontend and API)
 ├── templates/
-│   └── index.html           # Frontend UI with Atlan Auth SDK
-├── requirements.txt         # Python dependencies
-├── runtime.txt             # Python version (3.11.10) - CRITICAL!
-├── render.yaml             # Render.com configuration
-├── Procfile               # Web server configuration
-└── atlan-tab-config.json  # Configuration for Atlan admin
+│   └── index.html              # Frontend with Atlan Auth SDK integration
+├── requirements.txt            # Python dependencies
+├── runtime.txt                # Python 3.11.10 (prevents compilation errors)
+├── render.yaml                # Render.com configuration
+├── Procfile                  # Gunicorn web server configuration
+├── README.md                 # This file
+├── TEACHING_GUIDE.md         # Step-by-step implementation guide
+├── DEVELOPER_CHALLENGES.md  # Real-world challenges and solutions
+├── IMPLEMENTATION_LEARNINGS.md # Technical discoveries and workarounds
+└── archive/                  # Development/debug files (40+ files)
 ```
 
 ## 🔧 For Atlan Administrators
@@ -74,11 +82,12 @@ Register these redirect URIs in Keycloak:
 
 1. **User clicks "External Details" tab** in any asset profile page in Atlan
 2. **Atlan loads the app** in an iframe from Render
-3. **Authentication happens automatically** via Atlan Auth SDK
-4. **App displays**:
+3. **Authentication happens automatically** via Atlan Auth SDK (OAuth 2.0 with PKCE)
+4. **Asset GUID is captured** from raw postMessage before SDK processes it
+5. **App displays**:
    - User details from OAuth token
-   - Asset GUID from iframe context
-   - Asset description from pyatlan API call
+   - Asset GUID from intercepted iframe message
+   - Asset description via REST API with Bearer token
 
 ## 🔍 Testing the Deployment
 
@@ -109,17 +118,33 @@ Expected: `{"status": "healthy", "service": "atlan-external-tab"}`
 - First request after idle takes ~30 seconds
 - Logs available in Render dashboard
 
-## 📁 Other Files in Repository
+## 💡 Key Technical Achievements
+
+### Simplified OAuth
+- Reduced OAuth implementation from 200+ lines to just 10 lines using `@atlanhq/atlan-auth` SDK
+- Handles both standalone and embedded modes automatically
+
+### Asset GUID Capture Solution
+- SDK strips page context in embedded mode
+- Solution: Capture from raw postMessage BEFORE SDK initialization
+```javascript
+window.addEventListener('message', (event) => {
+    if (event.data?.type === 'ATLAN_AUTH_CONTEXT') {
+        assetGuid = event.data.payload?.page?.params?.id;
+    }
+});
+```
+
+### REST API vs SDK
+- OAuth tokens don't work with pyatlan SDK (expects API keys)
+- Solution: Use REST API directly with Bearer token authentication
 
 ### Documentation
-- `atlan-tab-config.json` - Configuration for Atlan admin
-- `MESSAGE_FOR_ATLAN_ADMIN.md` - Pre-written setup message
-- `DEPLOY_TO_RENDER.md` - Deployment instructions
-
-### Legacy Code (Reference Only)
-- `/training-example/` - Educational code (doesn't work locally due to OAuth)
-- `/oauth-example/` - Complex OAuth implementation (not used in production)
-- `simple-tab-template.html` - Standalone example with test mode
+For detailed implementation guidance, see:
+- `TEACHING_GUIDE.md` - Complete step-by-step tutorial
+- `DEVELOPER_CHALLENGES.md` - Real struggles and breakthroughs
+- `IMPLEMENTATION_LEARNINGS.md` - Technical discoveries
+- `archive/` - Contains 40+ development files for reference
 
 ## 🔄 Making Changes
 
